@@ -37,7 +37,7 @@ def svm_loss_naive(W, X, y, reg):
         loss += margin
         # for Wj
         dW[:, j] += X[i, :].T
-        dW[: y[i]] -= X[y[j], :].T
+        dW[:, y[i]] -= X[i, :].T
 
   # Right now the loss is a sum over all training examples, but we want it
   # to be an average instead so we divide by num_train.
@@ -69,18 +69,23 @@ def svm_loss_vectorized(W, X, y, reg):
   """
   loss = 0.0
   dW = np.zeros(W.shape) # initialize the gradient as zero
-
+  score_mat = X.dot(W)
+  correct_scores = score_mat[range(X.shape[0]), y]
   #############################################################################
   # TODO:                                                                     #
   # Implement a vectorized version of the structured SVM loss, storing the    #
   # result in loss.                                                           #
   #############################################################################
-  score_mat = X.dom(W)
-  correct_scores = score_mat[:, y]
-  loss_per_class_per_rec = correct_scores - 2*correct_scores + 1
-  loss += np.sum(loss_per_class_per_rec[loss_per_class_per_rec>0])
 
-  pass
+  # loss_per_class_per_rec = correct_scores - correct_scores + 1
+  # loss = np.sum(loss_per_class_per_rec[loss_per_class_per_rec>0])
+  # or
+  margin = np.maximum(0, score_mat - correct_scores[:, np.newaxis]+1.0)
+  margin[range(X.shape[0]), y] = 0
+  loss = np.sum(margin)
+
+  loss /= X.shape[0]
+  loss += np.sum(W**2)
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -95,7 +100,14 @@ def svm_loss_vectorized(W, X, y, reg):
   # to reuse some of the intermediate values that you used to compute the     #
   # loss.                                                                     #
   #############################################################################
-  pass
+
+  X_mask = np.zeros(margin.shape)
+  X_mask[margin>0] = 1
+  incorrect_cnt = np.sum(X_mask, axis=1)
+  X_mask[range(X_mask.shape[0]), y] = -incorrect_cnt
+  dW = X.T.dot(X_mask)
+  dW /= X.shape[0]
+  dW += reg * W
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
